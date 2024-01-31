@@ -8,6 +8,7 @@ import {
 import { CountriesService } from '../../services/countries.service';
 
 import { Region } from '../../interfaces/country.interface';
+import { switchMap } from 'rxjs';
 
 @Component({
   selector: 'app-selector-page',
@@ -26,7 +27,7 @@ export class SelectorPageComponent implements OnInit {
     private countriesService: CountriesService
   ) { }
 
-  ngOnInit(): void { 
+  ngOnInit(): void {
     this.onRegionChange();
   }
 
@@ -36,9 +37,12 @@ export class SelectorPageComponent implements OnInit {
 
   onRegionChange(): void {
     this.myForm.get('region')!.valueChanges
+      .pipe(
+        switchMap( region => this.countriesService.getConutriesByRegion( region ))
+      )
       .subscribe( region => {
         console.log({ region });
-      })
+      });
   }
 
 }
