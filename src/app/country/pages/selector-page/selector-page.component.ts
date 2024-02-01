@@ -5,10 +5,15 @@ import {
   Validators 
 } from '@angular/forms';
 
+import { 
+  filter, 
+  switchMap, 
+  tap 
+} from 'rxjs';
+
 import { CountriesService } from '../../services/countries.service';
 
-import { Region } from '../../interfaces/country.interface';
-import { switchMap } from 'rxjs';
+import { Region, SmallCountry } from '../../interfaces/country.interface';
 
 @Component({
   selector: 'app-selector-page',
@@ -16,10 +21,12 @@ import { switchMap } from 'rxjs';
 })
 export class SelectorPageComponent implements OnInit {
 
+  public countriesByRegion: SmallCountry[] = [];
+  public borders: SmallCountry[] = [];
   public myForm: FormGroup = this.fb.group({
     region: [ '', Validators.required ],
     country: [ '', Validators.required ],
-    borders: [ '', Validators.required ]
+    border: [ '', Validators.required ]
   });
 
   constructor ( 
@@ -29,6 +36,7 @@ export class SelectorPageComponent implements OnInit {
 
   ngOnInit(): void {
     this.onRegionChange();
+    this.onCountryChange();
   }
 
   get regions(): Region[] {
@@ -38,10 +46,25 @@ export class SelectorPageComponent implements OnInit {
   onRegionChange(): void {
     this.myForm.get('region')!.valueChanges
       .pipe(
+        tap(() => this.myForm.get('country')!.setValue('')),
+        tap(() => this.borders = []),
         switchMap( region => this.countriesService.getConutriesByRegion( region ))
       )
-      .subscribe( region => {
-        console.log({ region });
+      .subscribe( countries => {
+        this.countriesByRegion = countries;
+      });
+  }
+
+  onCountryChange(): void {
+    this.myForm.get('country')!.valueChanges
+      .pipe(
+        tap(() => this.myForm.get('border')!.setValue('')),
+        filter(( value: string ) => value.length > 0 ),
+        switchMap(( alphaCode ) => this.countriesService.getCountryByAlphaCode( alphaCode )),
+        switchMap(( country ) => this.countriesService.getCountryBordersCodes( country.borders ))
+      )
+      .subscribe( countries => {
+        this.borders = countries;
       });
   }
 

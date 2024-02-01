@@ -3,11 +3,16 @@ import { HttpClient } from '@angular/common/http';
 
 import { 
     Observable, 
-    of, 
-    tap 
+    combineLatest, 
+    map, 
+    of
 } from 'rxjs';
 
-import { Region, SmallContries } from '../interfaces/country.interface';
+import { 
+    Country, 
+    Region, 
+    SmallCountry 
+} from '../interfaces/country.interface';
 
 @Injectable({providedIn: 'root'})
 export class CountriesService {
@@ -27,17 +32,51 @@ export class CountriesService {
         return [ ...this._regions ];
     }
 
-    getConutriesByRegion( region: Region ): Observable<SmallContries[]> {
+    getConutriesByRegion( region: Region ): Observable<SmallCountry[]> {
         
         if( !region ) return of ([]);
 
-        const url: string = `${ this.baseUrl }/region/${ region }?fields=name,cca3,borders`;
+        const url: string = `${ this.baseUrl }/region/${ region }?fields=cca3,name,borders`;
 
-        return this._http.get<SmallContries[]>( url )
+        return this._http.get<Country[]>( url )
             .pipe(
-                tap( resp => console.log({ resp }))
+                map( countries => countries.map( country => ({
+                    name: country.name.common,
+                    cca3: country.cca3,
+                    borders: country.borders ?? []
+                    // ?? => Operador de cohalencia nula
+                })))
             );
-        // return [];
+    }
+
+    getCountryByAlphaCode( alphaCode: string ): Observable<SmallCountry> {
+
+        const url = `${ this.baseUrl }/alpha/${ alphaCode }?fields=cca3,name,borders`;
+
+        return this._http.get<Country>( url )
+            .pipe(
+                map( country => ({
+                    name: country.name.common,
+                    cca3: country.cca3,
+                    borders: country.borders ?? []
+                }))
+            );
+
+    }
+
+    getCountryBordersCodes( borders: string[] ): Observable<SmallCountry[]> {
+
+        if( !borders || borders.length === 0 ) return of ([]);
+
+        const countriesRequests: Observable<SmallCountry>[] = [];
+
+        borders.forEach( code => {
+            const request = this.getCountryByAlphaCode( code );
+            countriesRequests.push( request );
+        });
+
+        return combineLatest( countriesRequests );
+
     }
     
 }
